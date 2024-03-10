@@ -36,7 +36,7 @@ def cuda_profiler(device: str):
     obj['memory'] = torch.cuda.max_memory_allocated(device)
 
 pipe = StableDiffusionXLPipeline.from_single_file(...)
-with cuda_profiler(DEVICE) as prof:
+with cuda_profiler('cuda:0') as prof:
     pipe.unet = pipe.unet.to('cuda:0')
 print(prof['memory'], prof['time'])
 ```
