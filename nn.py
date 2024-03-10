@@ -37,6 +37,13 @@ class Linear(torch.nn.Module):
         weight = fp12_to_fp16(*self.weight).reshape(self.weight_shape)
         bias = fp12_to_fp16(*self.bias).reshape(self.bias_shape) if self.bias else None
         return F.linear(x, weight, bias)
+    
+    def _apply(self, fn, recurse=True):
+        super()._apply(fn, recurse)
+        self.weight = [fn(p) for p in self.weight]
+        if self.bias:
+            self.bias = [fn(p) for p in self.bias]
+        return self
 
 
 class Conv2d(torch.nn.Module):
@@ -72,4 +79,11 @@ class Conv2d(torch.nn.Module):
         weight = fp12_to_fp16(*self.weight).reshape(self.weight_shape)
         bias = fp12_to_fp16(*self.bias).reshape(self.bias_shape) if self.bias else None
         return self._conv_forward(x, weight, bias)
+    
+    def _apply(self, fn, recurse=True):
+        super()._apply(fn, recurse)
+        self.weight = [fn(p) for p in self.weight]
+        if self.bias:
+            self.bias = [fn(p) for p in self.bias]
+        return self
 
