@@ -1,3 +1,4 @@
+import contextlib
 import torch
 from diffusers import DiffusionPipeline, StableDiffusionXLPipeline
 
@@ -12,7 +13,8 @@ SEED = 1
 DEVICE = 'cuda:0'
 USE_AMP = False
 
-FP12_ONLY_ATTN = True
+USE_FP12 = True
+FP12_ONLY_ATTN = False
 FP12_APPLY_LINEAR = True
 FP12_APPLY_CONV = False
 
@@ -49,6 +51,7 @@ def to_fp12(module: torch.nn.Module):
                 del mod
                 
                 setattr(module, name, new_mod)
+                break
 
 
 def load_model(path: str, device: str):
@@ -56,8 +59,7 @@ def load_model(path: str, device: str):
         path,
         torch_dtype=torch.float16,
         safety_checker=None,
-    ).to(device)
-    pipe.enable_vae_slicing()
+    )
     return pipe
 
 def replace_fp12(pipe: DiffusionPipeline):
@@ -68,6 +70,27 @@ def replace_fp12(pipe: DiffusionPipeline):
         to_fp12(mod)
     return pipe
 
+
+@contextlib.contextmanager
+def cuda_profiler(device: str):
+    cuda_start = torch.cuda.Event(enable_timing=True)
+    cuda_end = torch.cuda.Event(enable_timing=True)
+
+    obj = {}
+    
+    torch.cuda.synchronize()
+    torch.cuda.reset_peak_memory_stats(device)
+    cuda_start.record()
+    
+    try:
+        yield obj
+    finally:
+        pass
+
+    cuda_end.record()
+    torch.cuda.synchronize()
+    obj['time'] = cuda_start.elapsed_time(cuda_end)
+    obj['memory'] = torch.cuda.max_memory_allocated(device)
 
 # ==============================================================================
 # Generation
@@ -87,7 +110,7 @@ def generate(pipe: DiffusionPipeline, prompt: str, negative_prompt: str, seed: i
         if 0 <= seed:
             rng = rng.manual_seed(seed)
         
-        images, *_ = pipe(
+        latents, *_ = pipe(
             prompt=prompt,
             negative_prompt=negative_prompt,
             width=1024,
@@ -96,15 +119,48 @@ def generate(pipe: DiffusionPipeline, prompt: str, negative_prompt: str, seed: i
             guidance_scale=3.0,
             num_images_per_prompt=4,
             generator=rng,
+            device=device,
             return_dict=False,
+            output_type='latent',
         )
+        
+        return latents
+        
+def save_image(pipe, latents):
+        with torch.no_grad():
+            images = pipe.vae.decode(latents / pipe.vae.config.scaling_factor, return_dict=False)[0]
+            images = pipe.image_processor.postprocess(images, output_type='pil')
         
         for i, image in enumerate(images):
             image.save(f'{i:02d}.png')
 
 
 if __name__ == '__main__':
-    free_memory()
     pipe = load_model(PATH_TO_MODEL, DEVICE)
-    pipe = replace_fp12(pipe)
-    generate(pipe, PROMPT, NEGATIVE_PROMPT, SEED, DEVICE, USE_AMP)
+    
+    if USE_FP12:
+        pipe = replace_fp12(pipe)
+    
+    free_memory()
+    with cuda_profiler(DEVICE) as prof:
+        pipe.unet = pipe.unet.to(DEVICE)
+    print('LOAD VRAM', prof['memory'])
+    print('LOAD TIME', prof['time'])
+    
+    pipe.text_encoder = pipe.text_encoder.to(DEVICE)
+    pipe.text_encoder_2 = pipe.text_encoder_2.to(DEVICE)
+    
+    free_memory()
+    with cuda_profiler(DEVICE) as prof:
+        latents = generate(pipe, PROMPT, NEGATIVE_PROMPT, SEED, DEVICE, USE_AMP)
+    print('UNET VRAM', prof['memory'])
+    print('UNET TIME', prof['time'])
+    
+    pipe.unet = pipe.unet.to('cpu')
+    pipe.text_encoder = pipe.text_encoder.to('cpu')
+    pipe.text_encoder_2 = pipe.text_encoder_2.to('cpu')
+    
+    free_memory()
+    pipe.vae = pipe.vae.to(DEVICE)
+    pipe.vae.enable_slicing()
+    save_image(pipe, latents)
