@@ -17,9 +17,9 @@ def to_fp12(data: torch.Tensor):
     # fp12 type-a: sEEE_ffff_ffff
     #                where EEE != 000
     #       mantissa = E-12 = -5..-11
-    # fp12 type-b: s000_0GGf_ffff
+    # fp12 type-b: s000_ffff_f0GG
     #       mantissa = G-15 = -12..-15
-    # fp12 type-c: s000_1HHf_ffff
+    # fp12 type-c: s000_ffff_f1HH
     #       mantissa = H-4 = -1..-4
     #
     # * significant bits
@@ -66,13 +66,13 @@ def to_fp12(data: torch.Tensor):
     G_mask = e < -11
     Ge = (e + 15).to(dtype=torch.int8).view(dtype=torch.uint8)
     Ge = Ge.clamp(0, 3)
-    F[G_mask] = (F[G_mask] >> 3) + (Ge[G_mask] << 5)
+    F[G_mask] = (F[G_mask] & 0b1111_1000) + Ge[G_mask]
     
     ## significants of type-c
     H_mask = -5 < e
     He = (e + 4).to(dtype=torch.int8).view(dtype=torch.uint8)
-    He = He.clamp(0, 3) + 0b100
-    F[H_mask] = (F[H_mask] >> 3) + (He[H_mask] << 5)
+    He = He.clamp(0, 3)
+    F[H_mask] = (F[H_mask] & 0b1111_1000) + He[H_mask] + 0b100
     
     return E, F
     
@@ -239,13 +239,12 @@ def fp12_to_fp16(exp: torch.Tensor, frac: torch.Tensor):
     E_mask = torch.logical_and(exp != 0, exp != 0b0100_0000).to(dtype=torch.int16)
     
     # take upper 6-bits from bitmap
-    exp = torch.take(EXP_MAP, (exp + (frac >> 5)).long())
+    exp = torch.take(EXP_MAP, (exp + (frac & 0b0000_0111)).long())
     
-    f_mask = (0b1110_0000 * E_mask) + 0b0001_1111
-    f_shift = 5 - 3 * E_mask
+    f_mask = (0b0000_0111 * E_mask) + 0b1111_1000
     frac = frac.to(dtype=torch.int16)
     frac.bitwise_and_(f_mask)
-    frac.bitwise_left_shift_(f_shift)
+    frac.bitwise_left_shift_(2)
     
     FP16 = exp.add_(frac)
     
