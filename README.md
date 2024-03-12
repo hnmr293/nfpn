@@ -44,9 +44,9 @@ print(prof['memory'], prof['time'])
 |     | VRAM usage of U-Net (MiB) | Peak VRAM usage on sampling (MiB) | Sampling time (ms/step) |
 | --- | --- | --- | --- |
 | Original | 4998.2 (1.00) | 7869.4 (1.00) | **1245.2 (1.00)** |
-| Replace all attn's Linear layers | 4541.5 (0.91) | 7411.5 (0.94) | 1314.9 (1.06) |
-| Replace all `Linear` layers | 3890.4 (0.78) | 6760.1 (0.86) | 1458.5 (1.17) |
-| Replace all `Linear` and `Conv2d` layers | **3737.8 (0.75)** | **6613.6 (0.84)** | 1507.9 (1.21) |
+| Replace all attn's Linear layers | 4541.5 (0.91) | 7411.5 (0.94) | 1261.7 (1.01) |
+| Replace all `Linear` layers | 3890.4 (0.78) | 6760.1 (0.86) | 1344.9 (1.08) |
+| Replace all `Linear` and `Conv2d` layers | **3737.8 (0.75)** | **6613.6 (0.84)** | 1369.4 (1.10) |
 
 ![image](./images/illust.png)
 
