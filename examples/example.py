@@ -54,7 +54,7 @@ def to_fp12(module: torch.nn.Module):
                 break
 
 
-def load_model(path: str, device: str):
+def load_model_cpu(path: str):
     pipe = StableDiffusionXLPipeline.from_single_file(
         path,
         torch_dtype=torch.float16,
@@ -136,7 +136,7 @@ def save_image(pipe, latents):
 
 
 if __name__ == '__main__':
-    pipe = load_model(PATH_TO_MODEL, DEVICE)
+    pipe = load_model_cpu(PATH_TO_MODEL)
     
     if USE_FP12:
         pipe = replace_fp12(pipe)
@@ -149,6 +149,9 @@ if __name__ == '__main__':
     
     pipe.text_encoder = pipe.text_encoder.to(DEVICE)
     pipe.text_encoder_2 = pipe.text_encoder_2.to(DEVICE)
+    
+    if torch.cuda.is_available():
+        torch.cuda.synchronize(DEVICE)
     
     free_memory()
     with cuda_profiler(DEVICE) as prof:
