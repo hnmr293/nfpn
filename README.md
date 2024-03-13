@@ -1,6 +1,6 @@
-# SD-fp12
+# nfpn
 
-12-bit floating point weights for Stable diffusion.
+Narrowed floating point number format for Pytorch. Specifically intended for application to the Stable diffusion.
 
 ## VRAM usage and performance with FP12
 

@@ -45,7 +45,7 @@ def to_fp12(module: torch.nn.Module):
                 try:
                     new_mod = fp12_class(mod)
                 except Exception as e:
-                    print(f'  -> failed: {name} {str(e)}')
+                    #print(f'  -> failed: {name} {str(e)}')
                     continue
                 
                 delattr(module, name)
@@ -67,7 +67,7 @@ def replace_fp12(pipe: DiffusionPipeline):
     for name, mod in pipe.unet.named_modules():
         if FP12_ONLY_ATTN and 'attn' not in name:
             continue
-        print('[fp12] REPLACE', name)
+        #print('[fp12] REPLACE', name)
         to_fp12(mod)
     return pipe
 
@@ -133,7 +133,7 @@ def save_image(pipe, latents):
             images = pipe.image_processor.postprocess(images, output_type='pil')
         
         for i, image in enumerate(images):
-            image.save(f'{i:02d}.png')
+            image.save(f'{i+8:02d}.png')
 
 
 if __name__ == '__main__':
