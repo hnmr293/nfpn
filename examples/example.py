@@ -2,7 +2,8 @@ import contextlib
 import torch
 from diffusers import DiffusionPipeline, StableDiffusionXLPipeline
 
-from fp12 import Linear, Conv2d
+from fp12 import LinearFP10 as Linear
+from fp12 import Conv2dFP10 as Conv2d
 
 
 PATH_TO_MODEL = "D:/sd/models/SDXL/animagineXLV3_v30.safetensors"
