@@ -2,7 +2,7 @@ from typing import Optional
 import torch
 import torch.nn.functional as F
 
-from fp12 import to_fp12, fp12_to_fp16, FP12_MAX
+from nfpn import to_fp12, fp12_to_fp16, FP12_MAX
 
 
 def get_param(data: torch.Tensor):
