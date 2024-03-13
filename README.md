@@ -1,6 +1,6 @@
 # nfpn
 
-Narrowed floating point number format for Pytorch. Specifically intended for application to the Stable diffusion.
+Narrowed floating point number format for Pytorch. Specifically intended for application to Stable diffusion series.
 
 ## VRAM usage and performance with FP12
 
