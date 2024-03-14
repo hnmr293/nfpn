@@ -2,8 +2,7 @@ import contextlib
 import torch
 from diffusers import DiffusionPipeline, StableDiffusionXLPipeline
 
-from nfpn import LinearHF10 as Linear
-from nfpn import Conv2dHF10 as Conv2d
+from nfpn import LinearHF10, Conv2dHF10, LinearHF12, Conv2dHF12
 
 
 PATH_TO_MODEL = "D:/sd/models/SDXL/animagineXLV3_v30.safetensors"
@@ -14,11 +13,26 @@ SEED = 1
 DEVICE = 'cuda:0'
 USE_AMP = False
 
-USE_HF12 = True
-FP12_ONLY_ATTN = False
-FP12_APPLY_LINEAR = True
-FP12_APPLY_CONV = False
+USE_HF = True
+HF_BITS = 10
+HF_ONLY_ATTN = False
+HF_APPLY_LINEAR = True
+HF_APPLY_CONV = False
 
+
+# ==============================================================================
+# Modules
+# ==============================================================================
+
+Linear = {
+    10: LinearHF10,
+    12: LinearHF12,
+}[HF_BITS]
+
+Conv2d = {
+    10: Conv2dHF10,
+    12: Conv2dHF12,
+}[HF_BITS]
 
 # ==============================================================================
 # Model loading
@@ -30,20 +44,20 @@ def free_memory():
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-def to_fp12(module: torch.nn.Module):
+def to_hf(module: torch.nn.Module):
     target_modules = []
     
-    if FP12_APPLY_LINEAR:
+    if HF_APPLY_LINEAR:
         target_modules.append((torch.nn.Linear, Linear))
     
-    if FP12_APPLY_CONV:
+    if HF_APPLY_CONV:
         target_modules.append((torch.nn.Conv2d, Conv2d))
     
     for name, mod in list(module.named_children()):
-        for orig_class, fp12_class in target_modules:
+        for orig_class, hf_class in target_modules:
             if isinstance(mod, orig_class):
                 try:
-                    new_mod = fp12_class(mod)
+                    new_mod = hf_class(mod)
                 except Exception as e:
                     #print(f'  -> failed: {name} {str(e)}')
                     continue
@@ -63,12 +77,12 @@ def load_model_cpu(path: str):
     )
     return pipe
 
-def replace_fp12(pipe: DiffusionPipeline):
+def replace_hf(pipe: DiffusionPipeline):
     for name, mod in pipe.unet.named_modules():
-        if FP12_ONLY_ATTN and 'attn' not in name:
+        if HF_ONLY_ATTN and 'attn' not in name:
             continue
-        #print('[fp12] REPLACE', name)
-        to_fp12(mod)
+        #print('[hf] REPLACE', name)
+        to_hf(mod)
     return pipe
 
 
@@ -139,8 +153,8 @@ def save_image(pipe, latents):
 if __name__ == '__main__':
     pipe = load_model_cpu(PATH_TO_MODEL)
     
-    if USE_FP12:
-        pipe = replace_fp12(pipe)
+    if USE_HF:
+        pipe = replace_hf(pipe)
     
     free_memory()
     with cuda_profiler(DEVICE) as prof:
