@@ -77,70 +77,70 @@ def to_hf12(data: torch.Tensor):
     return E, F
     
 
-#def hf12_to_fp16_2(exp: torch.Tensor, frac: torch.Tensor):
-#    assert exp.dtype == torch.uint8
-#    assert frac.dtype == torch.uint8
-#    assert exp.ndim == 1
-#    assert frac.ndim == 1
-#    assert exp.size(0) * 2 == frac.size(0)
-#    
-#    FP16 = torch.zeros(frac.shape, dtype=torch.int16, device=frac.device)
-#    
-#    exp = exp[..., None].expand(size=(-1,2)).contiguous().view((-1,))
-#    exp[::2] >>= 4
-#    exp[1::2] &= 0b0000_1111
-#    
-#    # sign
-#    FP16[:] = exp & 0b0000_1000
-#    FP16 <<= 12
-#    
-#    # exponential
-#    exp_e = (exp & 0b0111).to(dtype=torch.int16)
-#    exp_gh = ((frac >> 5) & 0b11).to(dtype=torch.int16)
-#    
-#    E_mask = exp_e != 0
-#    G_mask = torch.logical_and(exp_e == 0, (frac >> 7) == 0)
-#    H_mask = torch.logical_and(exp_e == 0, (frac >> 7) == 1)
-#    
-#    # EEE | EEE+3 | << 10               | e      |
-#    # --- | ----- | ------------------- | ------ |
-#    # 001 | 0100  | s001_0000_0000_0000 | 00100 = 4 -> -11
-#    
-#    # GG | << 10               | e      |
-#    # ---| ------------------- | ------ |
-#    # 00 | s000_0000_0000_0000 | 00000 = 0 -> -15
-#    # 01 | s000_0100_0000_0000 | 00001 = 1 -> -14
-#    # 10 | s000_1000_0000_0000 | 00010 = 2 -> -13
-#    # 11 | s000_1100_0000_0000 | 00011 = 3 -> -12
-#    
-#    # HH | HH+11 | << 10               | e      |
-#    # ---| ----  | ------------------- | ------ |
-#    # 00 | 1011  | s010_1100_0000_0000 | 01011 = 11 -> -4
-#    # 01 | 1100  | s011_0000_0000_0000 | 01100 = 12 -> -3
-#    # 10 | 1101  | s011_0100_0000_0000 | 01101 = 13 -> -2
-#    # 11 | 1110  | s011_1000_0000_0000 | 01110 = 14 -> -1
-#    
-#    FP16 += (
-#        ## type-a
-#        E_mask * (exp_e + 3) +
-#        #                 ^ EEE - 12 = -15 + a <=> a = EEE + 3
-#        ## type-b
-#        G_mask * exp_gh +
-#        #              ^ GG - 15 = -15 + a <=> a = GG
-#        ## type-c
-#        H_mask * (exp_gh + 11)
-#        #                  ^ HH - 4 = -15 + a <=> a = HH + 11
-#    ) << 10
-#    
-#    # significants
-#    FP16 += (
-#        ## type-a
-#        E_mask * frac +
-#        ## type-b and type-c
-#        (G_mask + H_mask) * (frac << 3)
-#    ).to(dtype=torch.int16) << 2  # TODO pad random value?
-#    
-#    return FP16.view(dtype=torch.float16)
+def hf12_to_fp16_2(exp: torch.Tensor, frac: torch.Tensor):
+    assert exp.dtype == torch.uint8
+    assert frac.dtype == torch.uint8
+    assert exp.ndim == 1
+    assert frac.ndim == 1
+    assert exp.size(0) * 2 == frac.size(0)
+    
+    FP16 = torch.zeros(frac.shape, dtype=torch.int16, device=frac.device)
+    
+    exp = exp[..., None].expand(size=(-1,2)).contiguous().view((-1,))
+    exp[::2] >>= 4
+    exp[1::2] &= 0b0000_1111
+    
+    # sign
+    FP16[:] = exp & 0b0000_1000
+    FP16 <<= 12
+    
+    # exponential
+    exp_e = (exp & 0b0111).to(dtype=torch.int16)
+    exp_gh = (frac & 0b11).to(dtype=torch.int16)
+    
+    E_mask = exp_e != 0
+    G_mask = torch.logical_and(exp_e == 0, (frac & 0b100) == 0)
+    H_mask = torch.logical_and(exp_e == 0, (frac & 0b100) == 1)
+    
+    # EEE | EEE+3 | << 10               | e      |
+    # --- | ----- | ------------------- | ------ |
+    # 001 | 0100  | s001_0000_0000_0000 | 00100 = 4 -> -11
+    
+    # GG | << 10               | e      |
+    # ---| ------------------- | ------ |
+    # 00 | s000_0000_0000_0000 | 00000 = 0 -> -15
+    # 01 | s000_0100_0000_0000 | 00001 = 1 -> -14
+    # 10 | s000_1000_0000_0000 | 00010 = 2 -> -13
+    # 11 | s000_1100_0000_0000 | 00011 = 3 -> -12
+    
+    # HH | HH+11 | << 10               | e      |
+    # ---| ----  | ------------------- | ------ |
+    # 00 | 1011  | s010_1100_0000_0000 | 01011 = 11 -> -4
+    # 01 | 1100  | s011_0000_0000_0000 | 01100 = 12 -> -3
+    # 10 | 1101  | s011_0100_0000_0000 | 01101 = 13 -> -2
+    # 11 | 1110  | s011_1000_0000_0000 | 01110 = 14 -> -1
+    
+    FP16 += (
+        ## type-a
+        E_mask * (exp_e + 3) +
+        #                 ^ EEE - 12 = -15 + a <=> a = EEE + 3
+        ## type-b
+        G_mask * exp_gh +
+        #              ^ GG - 15 = -15 + a <=> a = GG
+        ## type-c
+        H_mask * (exp_gh + 11)
+        #                  ^ HH - 4 = -15 + a <=> a = HH + 11
+    ) << 10
+    
+    # significants
+    FP16 += (
+        ## type-a
+        E_mask * frac +
+        ## type-b and type-c
+        (G_mask + H_mask) * (frac & 0b1111_1000)
+    ).to(dtype=torch.int16) << 2  # TODO pad random value?
+    
+    return FP16.view(dtype=torch.float16)
 
 
 # s_eee_fff (hf12) -> S_EEEEE (fp16)
