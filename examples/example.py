@@ -2,8 +2,8 @@ import contextlib
 import torch
 from diffusers import DiffusionPipeline, StableDiffusionXLPipeline
 
-from nfpn import LinearFP10 as Linear
-from nfpn import Conv2dFP10 as Conv2d
+from nfpn import LinearHF10 as Linear
+from nfpn import Conv2dHF10 as Conv2d
 
 
 PATH_TO_MODEL = "D:/sd/models/SDXL/animagineXLV3_v30.safetensors"
@@ -14,7 +14,7 @@ SEED = 1
 DEVICE = 'cuda:0'
 USE_AMP = False
 
-USE_FP12 = True
+USE_HF12 = True
 FP12_ONLY_ATTN = False
 FP12_APPLY_LINEAR = True
 FP12_APPLY_CONV = False
@@ -133,7 +133,7 @@ def save_image(pipe, latents):
             images = pipe.image_processor.postprocess(images, output_type='pil')
         
         for i, image in enumerate(images):
-            image.save(f'{i+8:02d}.png')
+            image.save(f'{i:02d}.png')
 
 
 if __name__ == '__main__':
