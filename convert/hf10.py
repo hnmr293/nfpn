@@ -1,24 +1,24 @@
 import torch
 
 # 00_0011_1111
-FP10_MAX = 0.5 * (1+0.5+0.25+0.125)
+HF10_MAX = 0.5 * (1+0.5+0.25+0.125)
 
 # 00_0000_0000
-FP10_MIN = 2 ** (-15)
+HF10_MIN = 2 ** (-15)
 
 
-def to_fp10(data: torch.Tensor):
+def to_hf10(data: torch.Tensor):
     data = data.to(dtype=torch.float16)
     
-    assert (data.abs() <= FP10_MAX).all().item(), f'max value = {data.abs().max().item()}'
+    assert (data.abs() <= HF10_MAX).all().item(), f'max value = {data.abs().max().item()}'
     
     # fp16: sEEE_EEff_ffff_ffff
     #
-    # fp10 type-a: sE_EEff_ffff  where EEE != 000
+    # hf10 type-a: sE_EEff_ffff  where EEE != 000
     #       mantissa = E-12 = -5..-11
-    # fp10 type-b: s0_00ff_f0GG
+    # hf10 type-b: s0_00ff_f0GG
     #       mantissa = G-15 = -12..-15
-    # fp10 type-c: s0_00ff_f1HH
+    # hf10 type-c: s0_00ff_f1HH
     #       mantissa = H-4 = -1..-4
     #
     # * significant bits
@@ -80,7 +80,7 @@ def to_fp10(data: torch.Tensor):
     
     return E1, F
 
-def fp10_to_fp16(exp: torch.Tensor, frac: torch.Tensor):
+def hf10_to_fp16(exp: torch.Tensor, frac: torch.Tensor):
     assert exp.dtype == torch.uint8
     assert frac.dtype == torch.uint8
     assert exp.ndim == 1

@@ -1,25 +1,25 @@
 import torch
 
 # 0000_1111_1111
-FP12_MAX = 0.5 * (1+0.5+0.25+0.125+0.0625+0.03125)
+HF12_MAX = 0.5 * (1+0.5+0.25+0.125+0.0625+0.03125)
 
 # 0000_0000_0000
-FP12_MIN = 2 ** (-15)
+HF12_MIN = 2 ** (-15)
 
 
-def to_fp12(data: torch.Tensor):
+def to_hf12(data: torch.Tensor):
     data = data.to(dtype=torch.float16)
     
-    assert (data.abs() <= FP12_MAX).all().item(), f'max value = {data.abs().max().item()}'
+    assert (data.abs() <= HF12_MAX).all().item(), f'max value = {data.abs().max().item()}'
     
     # fp16: sEEE_EEff_ffff_ffff
     #
-    # fp12 type-a: sEEE_ffff_ffff
+    # hf12 type-a: sEEE_ffff_ffff
     #                where EEE != 000
     #       mantissa = E-12 = -5..-11
-    # fp12 type-b: s000_ffff_f0GG
+    # hf12 type-b: s000_ffff_f0GG
     #       mantissa = G-15 = -12..-15
-    # fp12 type-c: s000_ffff_f1HH
+    # hf12 type-c: s000_ffff_f1HH
     #       mantissa = H-4 = -1..-4
     #
     # * significant bits
@@ -77,7 +77,7 @@ def to_fp12(data: torch.Tensor):
     return E, F
     
 
-#def fp12_to_fp16_2(exp: torch.Tensor, frac: torch.Tensor):
+#def hf12_to_fp16_2(exp: torch.Tensor, frac: torch.Tensor):
 #    assert exp.dtype == torch.uint8
 #    assert frac.dtype == torch.uint8
 #    assert exp.ndim == 1
@@ -143,7 +143,7 @@ def to_fp12(data: torch.Tensor):
 #    return FP16.view(dtype=torch.float16)
 
 
-# s_eee_fff (fp12) -> S_EEEEE (fp16)
+# s_eee_fff (hf12) -> S_EEEEE (fp16)
 #EXP_MAP = torch.tensor([
 #    # -15        -14        -13        -12        -4         -3         -2         -1
 #    # 0_000_000  0_000_001  0_000_010  0_000_011  0_000_100  0_000_101  0_000_110  0_000_111
@@ -215,7 +215,7 @@ EXP_MASK = torch.tensor([
     0b0000_1111
 ], dtype=torch.uint8)
 
-#def fp12_to_fp16_1(exp: torch.Tensor, frac: torch.Tensor):
+#def hf12_to_fp16_1(exp: torch.Tensor, frac: torch.Tensor):
 #    global EXP_MAP, EXP_MASK
 #    
 #    assert exp.dtype == torch.uint8
@@ -250,7 +250,7 @@ EXP_MASK = torch.tensor([
 #    
 #    return FP16.view(dtype=torch.float16)
 
-FP12_TO_FP16 = torch.tensor([
+HF12_TO_FP16 = torch.tensor([
     0b0_00000_0000000000, 0b0_00001_0000000000, 0b0_00010_0000000000, 0b0_00011_0000000000, 0b0_01011_0000000000, 0b0_01100_0000000000, 0b0_01101_0000000000, 0b0_01110_0000000000, 0b0_00000_0000100000, 0b0_00001_0000100000, 0b0_00010_0000100000, 0b0_00011_0000100000, 0b0_01011_0000100000, 0b0_01100_0000100000, 0b0_01101_0000100000, 0b0_01110_0000100000, 
     0b0_00000_0001000000, 0b0_00001_0001000000, 0b0_00010_0001000000, 0b0_00011_0001000000, 0b0_01011_0001000000, 0b0_01100_0001000000, 0b0_01101_0001000000, 0b0_01110_0001000000, 0b0_00000_0001100000, 0b0_00001_0001100000, 0b0_00010_0001100000, 0b0_00011_0001100000, 0b0_01011_0001100000, 0b0_01100_0001100000, 0b0_01101_0001100000, 0b0_01110_0001100000, 
     0b0_00000_0010000000, 0b0_00001_0010000000, 0b0_00010_0010000000, 0b0_00011_0010000000, 0b0_01011_0010000000, 0b0_01100_0010000000, 0b0_01101_0010000000, 0b0_01110_0010000000, 0b0_00000_0010100000, 0b0_00001_0010100000, 0b0_00010_0010100000, 0b0_00011_0010100000, 0b0_01011_0010100000, 0b0_01100_0010100000, 0b0_01101_0010100000, 0b0_01110_0010100000, 
@@ -509,12 +509,12 @@ FP12_TO_FP16 = torch.tensor([
     0b0_01010_1111000000, 0b0_01010_1111000100, 0b0_01010_1111001000, 0b0_01010_1111001100, 0b0_01010_1111010000, 0b0_01010_1111010100, 0b0_01010_1111011000, 0b0_01010_1111011100, 0b0_01010_1111100000, 0b0_01010_1111100100, 0b0_01010_1111101000, 0b0_01010_1111101100, 0b0_01010_1111110000, 0b0_01010_1111110100, 0b0_01010_1111111000, 0b0_01010_1111111100, 
 ], dtype=torch.int16)
 # torch does not have torch.uint16 (x_x)
-FP12_TO_FP16 = FP12_TO_FP16.view((2,-1))
-FP12_TO_FP16[1,:].bitwise_or_(0x8000)
-FP12_TO_FP16 = FP12_TO_FP16.view((-1,))
+HF12_TO_FP16 = HF12_TO_FP16.view((2,-1))
+HF12_TO_FP16[1,:].bitwise_or_(0x8000)
+HF12_TO_FP16 = HF12_TO_FP16.view((-1,))
 
-def fp12_to_fp16(exp: torch.Tensor, frac: torch.Tensor):
-    global FP12_TO_FP16, EXP_MASK
+def hf12_to_fp16(exp: torch.Tensor, frac: torch.Tensor):
+    global HF12_TO_FP16, EXP_MASK
     
     assert exp.dtype == torch.uint8
     assert frac.dtype == torch.uint8
@@ -522,8 +522,8 @@ def fp12_to_fp16(exp: torch.Tensor, frac: torch.Tensor):
     assert frac.ndim == 1
     assert exp.size(0) * 2 == frac.size(0)
     
-    if FP12_TO_FP16.device != exp.device:
-        FP12_TO_FP16 = FP12_TO_FP16.to(exp.device)
+    if HF12_TO_FP16.device != exp.device:
+        HF12_TO_FP16 = HF12_TO_FP16.to(exp.device)
     if EXP_MASK.device != exp.device:
         EXP_MASK = EXP_MASK.to(exp.device)
     
@@ -537,5 +537,5 @@ def fp12_to_fp16(exp: torch.Tensor, frac: torch.Tensor):
     indices = indices.view((-1,))
     indices.add_(frac)
     
-    FP16 = torch.take(FP12_TO_FP16, indices.long())
+    FP16 = torch.take(HF12_TO_FP16, indices.long())
     return FP16.view(dtype=torch.float16)

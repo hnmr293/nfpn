@@ -1,7 +1,7 @@
 import unittest
 import numpy
 import torch
-from nfpn import to_fp10, fp10_to_fp16, FP10_MAX
+from nfpn import to_hf10, hf10_to_fp16, HF10_MAX
 
 def is_subnormal(v):
     return v < 2 ** -14
@@ -10,11 +10,11 @@ def as_fp16(vi: int):
     vf = numpy.array([vi], dtype=numpy.uint16).view(numpy.float16)[0]
     return vf
 
-class TestToFp12(unittest.TestCase):
+class TestToHf12(unittest.TestCase):
     
-    def test_normal_fp16_normal_fp10(self):
+    def test_normal_fp16_normal_hf10(self):
         xs = [
-            # exp  value               fp16                   fp10 (expected)
+            # exp  value               fp16                   hf10 (expected)
             (-5,   0.03125,            0b0_01010_0000000000,  0b0_111_000000),
             (-6,   0.015625,           0b0_01001_0000000000,  0b0_110_000000),
             (-7,   0.0078125,          0b0_01000_0000000000,  0b0_101_000000),
@@ -31,7 +31,7 @@ class TestToFp12(unittest.TestCase):
             (-11, -0.00048828125,      0b1_00100_0000000000,  0b1_001_000000),
         ]
         
-        for exp, x, fp16, fp10 in xs:
+        for exp, x, fp16, hf10 in xs:
             xx = torch.tensor([x, x, x, x], dtype=torch.float16)
             
             self.assertEqual(xx[0].item(), x)
@@ -40,7 +40,7 @@ class TestToFp12(unittest.TestCase):
             self.assertEqual(xx[3].item(), x)
             self.assertEqual(xx[0].view(dtype=torch.int16).item() & 0xffff, fp16)
             
-            e, f = to_fp10(xx)
+            e, f = to_hf10(xx)
             
             self.assertEqual(e.shape, (1,))
             ev = e.item()
@@ -55,16 +55,16 @@ class TestToFp12(unittest.TestCase):
             e = ev >> 6
             f = f[0].item()
             
-            e_expected = fp10 >> 8
-            f_expected = fp10 & 0b1111_1111
+            e_expected = hf10 >> 8
+            f_expected = hf10 & 0b1111_1111
             
             self.assertEqual(e, e_expected)
             self.assertEqual(f, f_expected)
             
 
-    def test_normal_fp16_subnormal_fp10(self):
+    def test_normal_fp16_subnormal_hf10(self):
         xs = [
-            # exp  value               fp16                   fp10 (expected)
+            # exp  value               fp16                   hf10 (expected)
             (-1,   0.5,                0b0_01110_0000000000,  0b0_000_000_111),
             (-2,   0.25,               0b0_01101_0000000000,  0b0_000_000_110),
             (-3,   0.125,              0b0_01100_0000000000,  0b0_000_000_101),
@@ -81,7 +81,7 @@ class TestToFp12(unittest.TestCase):
             (-14, -6.103515625e-05,    0b1_00001_0000000000,  0b1_000_000_001),
         ]
         
-        for exp, x, fp16, fp10 in xs:
+        for exp, x, fp16, hf10 in xs:
             xx = torch.tensor([x, x, x, x], dtype=torch.float16)
             
             self.assertEqual(xx[0].item(), x)
@@ -90,7 +90,7 @@ class TestToFp12(unittest.TestCase):
             self.assertEqual(xx[3].item(), x)
             self.assertEqual(xx[0].view(dtype=torch.int16).item() & 0xffff, fp16)
             
-            e, f = to_fp10(xx)
+            e, f = to_hf10(xx)
             
             self.assertEqual(e.shape, (1,))
             ev = e.item()
@@ -105,15 +105,15 @@ class TestToFp12(unittest.TestCase):
             e = ev >> 6
             f = f[0].item()
             
-            e_expected = fp10 >> 8
-            f_expected = fp10 & 0b1111_1111
+            e_expected = hf10 >> 8
+            f_expected = hf10 & 0b1111_1111
             
             self.assertEqual(e, e_expected)
             self.assertEqual(f, f_expected)
     
-    def test_subnormal_fp16_subnormal_fp10(self):
+    def test_subnormal_fp16_subnormal_hf10(self):
         xs = [
-            # exp  value                   fp16                  fp10 (expected)
+            # exp  value                   fp16                  hf10 (expected)
             (-15, 3.0517578125e-05,        0b0_00000_1000000000, 0b0_000_100_000),
             (-16, 1.52587890625e-05,       0b0_00000_0100000000, 0b0_000_010_000),
             (-17, 7.62939453125e-06,       0b0_00000_0010000000, 0b0_000_001_000),
@@ -136,7 +136,7 @@ class TestToFp12(unittest.TestCase):
             (-24, -5.960464477539063e-08,  0b1_00000_0000000001, 0b1_000_000_000),
         ]
         
-        for exp, x, fp16, fp10 in xs:
+        for exp, x, fp16, hf10 in xs:
             xx = torch.tensor([x, x, x, x], dtype=torch.float16)
             
             self.assertEqual(xx[0].item(), x)
@@ -145,7 +145,7 @@ class TestToFp12(unittest.TestCase):
             self.assertEqual(xx[3].item(), x)
             self.assertEqual(xx[0].view(dtype=torch.int16).item() & 0xffff, fp16)
             
-            e, f = to_fp10(xx)
+            e, f = to_hf10(xx)
             
             self.assertEqual(e.shape, (1,))
             ev = e.item()
@@ -160,16 +160,16 @@ class TestToFp12(unittest.TestCase):
             e = ev >> 6
             f = f[0].item()
             
-            e_expected = fp10 >> 8
-            f_expected = fp10 & 0b1111_1111
+            e_expected = hf10 >> 8
+            f_expected = hf10 & 0b1111_1111
             
             self.assertEqual(e, e_expected)
             self.assertEqual(f, f_expected)
     
     
-    def test_normal_fp10_combine(self):
+    def test_normal_hf10_combine(self):
         xs = [
-            # exp  value               fp16                   fp10 (expected)
+            # exp  value               fp16                   hf10 (expected)
             (-5,   0.03125,            0b0_01010_0000000000,  0b0_111_000000),
             (-6,   0.015625,           0b0_01001_0000000000,  0b0_110_000000),
             (-7,   0.0078125,          0b0_01000_0000000000,  0b0_101_000000),
@@ -187,7 +187,7 @@ class TestToFp12(unittest.TestCase):
         ]
         
         fs = [
-            # value        fp16            fp10 (expected)
+            # value        fp16            hf10 (expected)
             (1.5,          0b10_0000_0000, 0b10_0000),
             (1.25,         0b01_0000_0000, 0b01_0000),
             (1.125,        0b00_1000_0000, 0b00_1000),
@@ -201,8 +201,8 @@ class TestToFp12(unittest.TestCase):
             (1.0,          0b00_0000_0000, 0b00_0000),
         ]
         
-        for exp, x0, fp16_e, fp10_e in xs:
-            for x1, fp16_f, fp10_f in fs:
+        for exp, x0, fp16_e, hf10_e in xs:
+            for x1, fp16_f, hf10_f in fs:
                 x = x0 * x1
                 
                 xx = torch.tensor([x, x, x, x], dtype=torch.float16)
@@ -213,7 +213,7 @@ class TestToFp12(unittest.TestCase):
                 self.assertEqual(xx[3].item(), x)
                 self.assertEqual(xx[0].view(dtype=torch.int16).item() & 0xffff, fp16_e | fp16_f, [exp, x0, x1, fp16_e, fp16_f])
         
-                e, f = to_fp10(xx)
+                e, f = to_hf10(xx)
                 
                 self.assertEqual(e.shape, (1,))
                 ev = e.item()
@@ -228,16 +228,16 @@ class TestToFp12(unittest.TestCase):
                 e = ev >> 6
                 f = f[0].item()
                 
-                e_expected = fp10_e >> 8
-                f_expected = (fp10_e & 0b0_011_000000) | fp10_f
+                e_expected = hf10_e >> 8
+                f_expected = (hf10_e & 0b0_011_000000) | hf10_f
                 
-                self.assertEqual(e, e_expected, [exp, x0, x1, fp16_e, fp10_e, fp16_f, fp10_f])
-                self.assertEqual(f, f_expected, [exp, x0, x1, fp16_e, fp10_e, fp16_f, fp10_f])
+                self.assertEqual(e, e_expected, [exp, x0, x1, fp16_e, hf10_e, fp16_f, hf10_f])
+                self.assertEqual(f, f_expected, [exp, x0, x1, fp16_e, hf10_e, fp16_f, hf10_f])
         
 
-    def test_subnormal_fp10_combine(self):
+    def test_subnormal_hf10_combine(self):
         xs = [
-            # exp  value               fp16                   fp10 (expected)
+            # exp  value               fp16                   hf10 (expected)
             (-1,   0.5,                0b0_01110_0000000000,  0b0_000_000_111),
             (-2,   0.25,               0b0_01101_0000000000,  0b0_000_000_110),
             (-3,   0.125,              0b0_01100_0000000000,  0b0_000_000_101),
@@ -255,7 +255,7 @@ class TestToFp12(unittest.TestCase):
         ]
         
         fs = [
-            # value        fp16            fp10 (expected)
+            # value        fp16            hf10 (expected)
             (1.5,          0b10_0000_0000, 0b10_0000),
             (1.25,         0b01_0000_0000, 0b01_0000),
             (1.125,        0b00_1000_0000, 0b00_1000),
@@ -269,8 +269,8 @@ class TestToFp12(unittest.TestCase):
             (1.0,          0b00_0000_0000, 0b00_0000),
         ]
         
-        for exp, x0, fp16_e, fp10_e in xs:
-            for x1, fp16_f, fp10_f in fs:
+        for exp, x0, fp16_e, hf10_e in xs:
+            for x1, fp16_f, hf10_f in fs:
                 x = x0 * x1
                 
                 xx = torch.tensor([x, x, x, x], dtype=torch.float16)
@@ -281,7 +281,7 @@ class TestToFp12(unittest.TestCase):
                 self.assertEqual(xx[3].item(), x)
                 self.assertEqual(xx[0].view(dtype=torch.int16).item() & 0xffff, fp16_e | fp16_f)
         
-                e, f = to_fp10(xx)
+                e, f = to_hf10(xx)
                 
                 self.assertEqual(e.shape, (1,))
                 ev = e.item()
@@ -296,8 +296,8 @@ class TestToFp12(unittest.TestCase):
                 e = ev >> 6
                 f = f[0].item()
                 
-                e_expected = fp10_e >> 8
-                f_expected = (fp10_f & 0b111000) | (fp10_e & 0b0000_0111)
+                e_expected = hf10_e >> 8
+                f_expected = (hf10_f & 0b111000) | (hf10_e & 0b0000_0111)
                 
                 self.assertEqual(e, e_expected)
                 self.assertEqual(f, f_expected, [exp, x0, x1, f'{f:08b}', f'{f_expected:08b}'])
@@ -305,9 +305,9 @@ class TestToFp12(unittest.TestCase):
     
 class TestToFp16(unittest.TestCase):
     
-    def test_normal_fp10(self):
+    def test_normal_hf10(self):
         es = [
-            # exp fp10     fp16
+            # exp hf10     fp16
             (-11, 0b0_001, 0b0_00100),
             (-10, 0b0_010, 0b0_00101),
             (-9,  0b0_011, 0b0_00110),
@@ -324,13 +324,13 @@ class TestToFp16(unittest.TestCase):
             (-5,  0b1_111, 0b1_01010),
         ]
         
-        for exp, fp10_e, fp16_e in es:
-            fp10_e1 = fp10_e >> 2
-            fp10_e2 = fp10_e & 0b11
-            ee = torch.tensor([(fp10_e1 << 6) | (fp10_e1 << 4) | (fp10_e1 << 2) | fp10_e1], dtype=torch.uint8)
-            ff = torch.tensor([fp10_e2 << 6], dtype=torch.uint8).repeat(4)
+        for exp, hf10_e, fp16_e in es:
+            hf10_e1 = hf10_e >> 2
+            hf10_e2 = hf10_e & 0b11
+            ee = torch.tensor([(hf10_e1 << 6) | (hf10_e1 << 4) | (hf10_e1 << 2) | hf10_e1], dtype=torch.uint8)
+            ff = torch.tensor([hf10_e2 << 6], dtype=torch.uint8).repeat(4)
             
-            xs = fp10_to_fp16(ee, ff)
+            xs = hf10_to_fp16(ee, ff)
             
             self.assertEqual(xs.shape, (4,))
             self.assertEqual(xs[0].item(), xs[1].item())
@@ -340,18 +340,18 @@ class TestToFp16(unittest.TestCase):
             x = xs[0].view(dtype=torch.int16).item() & 0xffff
             
             self.assertEqual(x & 0b11_1111_1111, 0)
-            self.assertEqual(x >> 10, fp16_e, [exp, fp10_e, f'{ee.item():08b}', ff, x, fp16_e])
+            self.assertEqual(x >> 10, fp16_e, [exp, hf10_e, f'{ee.item():08b}', ff, x, fp16_e])
         
-        for exp, fp10_e, fp16_e in es:
-            for fp10_f in range(1<<6):
-                fp16_f = fp10_f << 4
+        for exp, hf10_e, fp16_e in es:
+            for hf10_f in range(1<<6):
+                fp16_f = hf10_f << 4
         
-                fp10_e1 = fp10_e >> 2
-                fp10_e2 = fp10_e & 0b11
-                ee = torch.tensor([(fp10_e1 << 6) | (fp10_e1 << 4) | (fp10_e1 << 2) | fp10_e1], dtype=torch.uint8)
-                ff = torch.tensor([(fp10_e2 << 6) | fp10_f], dtype=torch.uint8).repeat(4)
+                hf10_e1 = hf10_e >> 2
+                hf10_e2 = hf10_e & 0b11
+                ee = torch.tensor([(hf10_e1 << 6) | (hf10_e1 << 4) | (hf10_e1 << 2) | hf10_e1], dtype=torch.uint8)
+                ff = torch.tensor([(hf10_e2 << 6) | hf10_f], dtype=torch.uint8).repeat(4)
         
-                xs = fp10_to_fp16(ee, ff)
+                xs = hf10_to_fp16(ee, ff)
                 
                 self.assertEqual(xs.shape, (4,))
                 self.assertEqual(xs[0].item(), xs[1].item())
@@ -360,14 +360,14 @@ class TestToFp16(unittest.TestCase):
                 
                 x = xs[0].view(dtype=torch.int16).item() & 0xffff
                 
-                self.assertEqual(x & 0b11_1111_1111, fp16_f, f'{exp} {fp10_e:04b}:{fp10_f:08b} {fp16_e:06b}:{fp16_f:010b} {x&0b11_1111_1111:010b}')
+                self.assertEqual(x & 0b11_1111_1111, fp16_f, f'{exp} {hf10_e:04b}:{hf10_f:08b} {fp16_e:06b}:{fp16_f:010b} {x&0b11_1111_1111:010b}')
                 self.assertEqual(x >> 10, fp16_e)
             
             
-    def test_subnormal_fp10_normal_fp16(self):
+    def test_subnormal_hf10_normal_fp16(self):
         pass
     
-    def test_subnormal_fp10_subnormal_fp16(self):
+    def test_subnormal_hf10_subnormal_fp16(self):
         pass
 
 
@@ -385,7 +385,7 @@ def test_rand(n=1024, seed=-1):
         
         x = (e << 10) | f
         
-        if FP10_MAX <= as_fp16(x):
+        if HF10_MAX <= as_fp16(x):
             continue
         
         xx = torch.tensor([x, x, x, x], dtype=torch.int16).view(dtype=torch.float16)
@@ -393,9 +393,9 @@ def test_rand(n=1024, seed=-1):
             xx = -xx
             x = (s << 15) | x
         
-        ee, ff = to_fp10(xx)
+        ee, ff = to_hf10(xx)
         
-        yy = fp10_to_fp16(ee, ff)
+        yy = hf10_to_fp16(ee, ff)
         
         assert yy.shape == (4,)
         assert yy[0] == yy[1]

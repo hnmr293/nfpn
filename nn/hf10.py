@@ -2,14 +2,14 @@ from typing import Optional
 import torch
 import torch.nn.functional as F
 
-from nfpn import to_fp10, fp10_to_fp16, FP10_MAX
+from nfpn import to_hf10, hf10_to_fp16, HF10_MAX
 
 
 def get_param(data: torch.Tensor):
-    if FP10_MAX <= data.abs().max():
-        print('[WARN] max(abs(data)) >= FP10_MAX')
+    if HF10_MAX <= data.abs().max():
+        print('[WARN] max(abs(data)) >= HF10_MAX')
     
-    exp, frac = to_fp10(data)
+    exp, frac = to_hf10(data)
     
     exp.requires_grad_(False)
     frac.requires_grad_(False)
@@ -34,8 +34,8 @@ class Linear(torch.nn.Module):
         self.to(base.weight.device)
     
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        weight = fp10_to_fp16(*self.weight).reshape(self.weight_shape)
-        bias = fp10_to_fp16(*self.bias).reshape(self.bias_shape) if self.bias else None
+        weight = hf10_to_fp16(*self.weight).reshape(self.weight_shape)
+        bias = hf10_to_fp16(*self.bias).reshape(self.bias_shape) if self.bias else None
         return F.linear(x, weight, bias)
     
     def _apply(self, fn, recurse=True):
@@ -76,8 +76,8 @@ class Conv2d(torch.nn.Module):
                         self.padding, self.dilation, self.groups)
 
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        weight = fp10_to_fp16(*self.weight).reshape(self.weight_shape)
-        bias = fp10_to_fp16(*self.bias).reshape(self.bias_shape) if self.bias else None
+        weight = hf10_to_fp16(*self.weight).reshape(self.weight_shape)
+        bias = hf10_to_fp16(*self.bias).reshape(self.bias_shape) if self.bias else None
         return self._conv_forward(x, weight, bias)
     
     def _apply(self, fn, recurse=True):
