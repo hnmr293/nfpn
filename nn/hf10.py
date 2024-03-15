@@ -2,14 +2,41 @@ from typing import Optional
 import torch
 import torch.nn.functional as F
 
-from nfpn import to_hf10, hf10_to_fp16, HF10_MAX
+from .. import convert
 
 
-def get_param(data: torch.Tensor):
-    if HF10_MAX <= data.abs().max():
-        print('[WARN] max(abs(data)) >= HF10_MAX')
+def to_hf10(module: torch.nn.Module, convert_linear: bool = True, convert_conv2d: bool = False):
+    target_modules = []
     
-    exp, frac = to_hf10(data)
+    if convert_linear:
+        target_modules.append((torch.nn.Linear, Linear))
+    
+    if convert_conv2d:
+        target_modules.append((torch.nn.Conv2d, Conv2d))
+    
+    for name, mod in list(module.named_children()):
+        for orig_class, hf_class in target_modules:
+            if isinstance(mod, orig_class):
+                try:
+                    new_mod = hf_class(mod)
+                except Exception as e:
+                    print(f'[nfpn] *** WARN *** failed to convert module to HF10: {name} {str(e)}')
+                    break
+                
+                delattr(module, name)
+                del mod
+                
+                setattr(module, name, new_mod)
+                break
+    
+    return module
+
+
+def _get_param(data: torch.Tensor):
+    if convert.HF10_MAX <= data.abs().max():
+        print('[nfpn] *** WARN *** max(abs(data)) >= HF10_MAX')
+    
+    exp, frac = convert.to_hf10(data)
     
     exp.requires_grad_(False)
     frac.requires_grad_(False)
@@ -23,10 +50,10 @@ def get_param(data: torch.Tensor):
 class Linear(torch.nn.Module):
     def __init__(self, base: torch.nn.Linear) -> None:
         super().__init__()
-        self.weight = get_param(base.weight)
+        self.weight = _get_param(base.weight)
         self.weight_shape = base.weight.shape
         if base.bias is not None:
-            self.bias = get_param(base.bias)
+            self.bias = _get_param(base.bias)
             self.bias_shape = base.bias.shape
         else:
             self.bias = None
@@ -34,8 +61,8 @@ class Linear(torch.nn.Module):
         self.to(base.weight.device)
     
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        weight = hf10_to_fp16(*self.weight).reshape(self.weight_shape)
-        bias = hf10_to_fp16(*self.bias).reshape(self.bias_shape) if self.bias else None
+        weight = convert.hf10_to_fp16(*self.weight).reshape(self.weight_shape)
+        bias = convert.hf10_to_fp16(*self.bias).reshape(self.bias_shape) if self.bias else None
         return F.linear(x, weight, bias)
     
     def _apply(self, fn, recurse=True):
@@ -49,10 +76,10 @@ class Linear(torch.nn.Module):
 class Conv2d(torch.nn.Module):
     def __init__(self, base: torch.nn.Conv2d):
         super().__init__()
-        self.weight = get_param(base.weight)
+        self.weight = _get_param(base.weight)
         self.weight_shape = base.weight.shape
         if base.bias is not None:
-            self.bias = get_param(base.bias)
+            self.bias = _get_param(base.bias)
             self.bias_shape = base.bias.shape
         else:
             self.bias = None
@@ -76,8 +103,8 @@ class Conv2d(torch.nn.Module):
                         self.padding, self.dilation, self.groups)
 
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        weight = hf10_to_fp16(*self.weight).reshape(self.weight_shape)
-        bias = hf10_to_fp16(*self.bias).reshape(self.bias_shape) if self.bias else None
+        weight = convert.hf10_to_fp16(*self.weight).reshape(self.weight_shape)
+        bias = convert.hf10_to_fp16(*self.bias).reshape(self.bias_shape) if self.bias else None
         return self._conv_forward(x, weight, bias)
     
     def _apply(self, fn, recurse=True):

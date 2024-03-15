@@ -1,7 +1,7 @@
 import unittest
 import numpy
 import torch
-from nfpn import to_hf12, hf12_to_fp16, HF12_MAX
+from nfpn.convert import to_hf12, hf12_to_fp16, HF12_MAX
 
 def is_subnormal(v):
     return v < 2 ** -14

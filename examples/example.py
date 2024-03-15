@@ -2,7 +2,7 @@ import contextlib
 import torch
 from diffusers import DiffusionPipeline, StableDiffusionXLPipeline
 
-from nfpn import LinearHF10, Conv2dHF10, LinearHF12, Conv2dHF12
+import nfpn
 
 
 PATH_TO_MODEL = "D:/sd/models/SDXL/animagineXLV3_v30.safetensors"
@@ -21,20 +21,6 @@ HF_APPLY_CONV = False
 
 
 # ==============================================================================
-# Modules
-# ==============================================================================
-
-Linear = {
-    10: LinearHF10,
-    12: LinearHF12,
-}[HF_BITS]
-
-Conv2d = {
-    10: Conv2dHF10,
-    12: Conv2dHF12,
-}[HF_BITS]
-
-# ==============================================================================
 # Model loading
 # ==============================================================================
 
@@ -45,28 +31,16 @@ def free_memory():
         torch.cuda.empty_cache()
 
 def to_hf(module: torch.nn.Module):
-    target_modules = []
+    fn = None
     
-    if HF_APPLY_LINEAR:
-        target_modules.append((torch.nn.Linear, Linear))
+    if HF_BITS == 10:
+        fn = nfpn.nn.to_hf10
+    elif HF_BITS == 12:
+        fn = nfpn.nn.to_hf12
+    else:
+        raise ValueError(f'unknown HF_BITS value: {HF_BITS}')
     
-    if HF_APPLY_CONV:
-        target_modules.append((torch.nn.Conv2d, Conv2d))
-    
-    for name, mod in list(module.named_children()):
-        for orig_class, hf_class in target_modules:
-            if isinstance(mod, orig_class):
-                try:
-                    new_mod = hf_class(mod)
-                except Exception as e:
-                    #print(f'  -> failed: {name} {str(e)}')
-                    continue
-                
-                delattr(module, name)
-                del mod
-                
-                setattr(module, name, new_mod)
-                break
+    return fn(module)
 
 
 def load_model_cpu(path: str):
