@@ -14,7 +14,7 @@ DEVICE = 'cuda:0'
 USE_AMP = False
 
 USE_HF = True
-HF_BITS = 10
+HF_BITS = 8
 HF_ONLY_ATTN = False
 HF_APPLY_LINEAR = True
 HF_APPLY_CONV = False
@@ -33,7 +33,9 @@ def free_memory():
 def to_hf(module: torch.nn.Module):
     fn = None
     
-    if HF_BITS == 10:
+    if HF_BITS == 8:
+        fn = nfpn.nn.to_hf8
+    elif HF_BITS == 10:
         fn = nfpn.nn.to_hf10
     elif HF_BITS == 12:
         fn = nfpn.nn.to_hf12
