@@ -62,11 +62,13 @@ def replace_hf(pipe: DiffusionPipeline):
 def to_hf(module: torch.nn.Module):
     fn = None
     
-    if HF_BITS == 8:
+    if HF_BITS == '8':
         fn = nfpn.nn.to_hf8
-    elif HF_BITS == 10:
+    elif HF_BITS == '8x':
+        fn = nfpn.nn.to_hf8x
+    elif HF_BITS == '10':
         fn = nfpn.nn.to_hf10
-    elif HF_BITS == 12:
+    elif HF_BITS == '12':
         fn = nfpn.nn.to_hf12
     else:
         raise ValueError(f'unknown HF_BITS value: {HF_BITS}')
@@ -173,7 +175,7 @@ if __name__ == '__main__':
     p.add_argument('--seed', type=int, default=-1)
     p.add_argument('--image_dir', type=str, default='./')
     
-    p.add_argument('--hf_bits', type=int, default=0)
+    p.add_argument('--hf_bits', type=str, choices=['0', '8', '8x', '10', '12'], default='0')
     p.add_argument('--hf_only_attn', type=_str_to_bool, default=False)
     p.add_argument('--hf_linear', type=_str_to_bool, default=True)
     p.add_argument('--hf_conv', type=_str_to_bool, default=False)
@@ -190,8 +192,8 @@ if __name__ == '__main__':
     CFG = args.cfg
     SEED = args.seed
     IMAGE_DIR = args.image_dir
-    USE_HF = args.hf_bits != 0
-    HF_BITS = args.hf_bits
+    USE_HF = args.hf_bits != '0'
+    HF_BITS = args.hf_bits.lower()
     HF_ONLY_ATTN = args.hf_only_attn
     HF_APPLY_LINEAR = args.hf_linear
     HF_APPLY_CONV = args.hf_conv
