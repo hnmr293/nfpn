@@ -33,7 +33,7 @@ def to_hf8(module: torch.nn.Module, convert_linear: bool = True, convert_conv2d:
 
 
 def _get_param(data: torch.Tensor):
-    if convert.HF10_MAX <= data.abs().max():
+    if convert.HF8_MAX <= data.abs().max():
         print('[nfpn] *** WARN *** max(abs(data)) >= HF8_MAX')
     
     hf8 = convert.to_hf8(data)
