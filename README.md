@@ -2,7 +2,7 @@
 
 [→日本語はここ](./README_ja.md)
 
-This library reduces VRAM consumption in applications such as stable diffusion, by reducing the bit depth of the model weight in memory.
+This library reduces VRAM usage in applications such as stable diffusion, by reducing the bit depth of the model weight in memory.
 
 The name `nfpn` stands for `Narrowed floating point number`.
 
@@ -31,15 +31,15 @@ CFG scale: 6.0
 Seed: 1
 ```
 
-Three figures below show the VRAM usage during U-net loading, the VRAM usage during sampling generation, and the sampling time per step respectively.
+Three figures below show the VRAM usage during U-net loading, the VRAM usage during sampling, and the replative sampling time per step respectively.
 
-The first figure shows the result of the original model with the weights of `FP16`. The second figure shows the result with only the attention's `Linear` replaced with HF format. The third figure shows the result with all `Linear` layers replaced with HF format. And the fourth figure shows the result with all `Linear` and `Conv2d` layers replaced with HF format.
+In each figure, the first bars show the results of the original `FP16` model. The second bars show the results with only the attention's `Linear` replaced with HF format. The third bars show the results with all `Linear` layers replaced with HF format. And the fourth bars show the results with all `Linear` and `Conv2d` layers replaced with HF format.
 
 ![VRAM usage on U-net loading (MiB)](./images/load_vram.png)
 ![VRAM usage on sampling (MiB)](./images/sampling_vram.png)
 ![Sampling time](./images/sampling_time.png)
 
-The first figure shows the VRAM usage on model loading. The HF format reduces VRAM usage by up to 43%. The second figure shows the VRAM usage during inference, which has been reduced by up to 27%. The third figure shows the relative comparison of generation times. Compared to FP16, the generation time is 4-11% longer than for FP16. Of course, HF format will be much faster then FP16 when your model overflows from VRAM. For implementation reasons, `HF8` and `HF8x` are faster than `HF12` and `HF10`.
+The first figure shows that HF format can reduce VRAM usage by up to 43%. The second figure shows that the VRAM usage during inference can be reduced by up to 27%. The third figure shows that, compared to FP16, the generation time is 4-11% longer than FP16. Of course, HF format will be much faster then FP16 when your model overflows from VRAM. For implementation reasons, `HF8` and `HF8x` are faster than `HF12` and `HF10`.
 
 ## Examples of generated images
 
@@ -78,7 +78,7 @@ There is no image breakdown in any of these settings.
 
 ## How to use
 
-For the module you want to apply HF format, call `nfpn.nn.to_hf(8|8x|10|12)` as follows. If the module is in VRAM, the conversion process will be performed on the GPU, which improves the speed of the conversion.
+For the module you want to apply HF format, call `nfpn.nn.to_hf(8|8x|10|12)` as follows. If your module is in VRAM, the conversion process will be performed on the GPU, which improves the speed of the conversion.
 
 ```python
 import nfpn
@@ -88,7 +88,7 @@ import nfpn
 mod = nfpn.nn.to_hf12(mod)
 ```
 
-See [examples/generate.py](./examples/generate.py) for the example with `diffusers`.
+See [examples/generate.py](./examples/generate.py) for the example of `diffusers`.
 
 ## Format details
 
@@ -96,7 +96,7 @@ Let `s` be the sign bit, `E` be the exponent bits, and `f` be the mantissa bits.
 
 `s_EEEEE_ffffffffff`
 
-First, the distribution of floating-point exponents (`EEEEE`) of Animagine's all `Linear` layers is shown below.
+The distribution of exponent (`EEEEE`) of Animagine's all `Linear` layers is shown below.
 
 | EEEEE | exponents | count |
 | --- | --- | --- |
@@ -137,15 +137,13 @@ It has a peak at -6, which clearly indicating that the distribution is biased. B
 
 Specifically, I allocated 3 bits as exponent bits to represent the range -11..-5. This narrows the value range of the format, but the exponent could be reduced by 2 bits.
 
-Adding 1 sign bit to this 3 bits exponent, we got 4 bits sequence which we can add an arbitary precision mantissa part to.
+Adding 1 sign bit to this 3 bits exponent, we got 4 bits sequence. We can add an arbitary precision mantissa part to it.
 
-Also, since we assigned 7 numbers (-11..-5) for 3 bits, we have 1 extra state. This is used as a special (subnormal) state, which represents the numbers whose original exponent was less than -11 or greater then -5.
+Also, since we assigned 7 numbers (-11..-5) for 3 bits, we have 1 extra state. This is used as a special (subnormal) state, which represents the numbers whose original exponent is less than -11 or greater then -5.
 
-For an exponent less than -11, there can only be -12, -13, -14 and subnormal numbers. So we need to allocate extra 2 bits from mantissa part to represent these exponents.
+For an exponent less than -11, there can only be -12, -13, -14 and subnormal numbers. We need to allocate extra 2 bits from mantissa part to represent these exponents.
 
 If we assign the same bits for exponent greater than -5, we can express -4, -3, -2, and -1. Zero or greater numbers can be ignored because they rarely appear. If they do occur, give up converting and keep the module float16.
-
-With this in mind, provides the following formats:nfpn
 
 Based on the above ideas, `nfpn` provides following formats:
 
