@@ -1,3 +1,23 @@
+###
+### [Parameters] (default)
+###
+### --model: *REQUIRED* model path
+### --prompt: ("") prompt
+### --negative_prompt: ("") negative prompt
+### --num_images: (4) the number of images to generate
+### --width: (1024) image width
+### --height: (1024) image height
+### --steps: (30) sampling steps with Euler a scheduler
+### --cfg: (6.0) classifier-free guidance scale
+### --seed: (-1) random seed (-1 for random)
+### --image_dir: ("./") directory path to save generated images
+### --hf_bits: ("0") one of "0", "8", "8x", "10", "12"; 0 means disable hf
+### --hf_only_attn: ("False") if True, hf will be applied to only attention layers, otherwise all layers
+### --hf_linear: ("True")  if True, hf will be applied to `Linear` layers
+### --hf_conv: ("False") if True, hf will be applied to `Conv2d` layers
+###
+
+
 import os
 import contextlib
 import torch
@@ -11,11 +31,11 @@ import nfpn
 
 
 # Model setting
-PATH_TO_MODEL = 'D:/sd/models/SDXL/animagineXLV3_v30.safetensors'
+PATH_TO_MODEL = ''
 
 # Prompts
-PROMPT = '1girl, cute princess, frilled white dress, long sleeves highneck dress, elaborated lace, brown hair, sitting, tiara, red eyes, eyelashes, twinkle eyes, smile, flower garden, cinematic lighting, necklace, masterpiece, best quality'
-NEGATIVE_PROMPT = 'nsfw, collarbone, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name, bad eyes'
+PROMPT = ''
+NEGATIVE_PROMPT = ''
 
 # Generation settings
 NUM_IMAGES = 4
