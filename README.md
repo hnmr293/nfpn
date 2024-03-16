@@ -1,6 +1,6 @@
 # nfpn
 
-[→日本語はここ](./README.md)
+[→日本語はここ](./README_ja.md)
 
 Narrowed floating point number format for Pytorch. Specifically intended for application to Stable diffusion series.
 
