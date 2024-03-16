@@ -58,24 +58,3 @@ def hf8x_to_fp16(hf8x: torch.Tensor):
     FP16 = s.add_(ef)
     
     return FP16.view(dtype=torch.float16)
-
-
-#HF8_TO_FP16 = torch.tensor([
-#], dtype=torch.int16)
-## torch does not have torch.uint16 (x_x)
-#HF8_TO_FP16 = HF8_TO_FP16.view((2,-1))
-#HF8_TO_FP16[1,:].bitwise_or_(0x8000)
-#HF8_TO_FP16 = HF8_TO_FP16.view((-1,))
-#
-#def hf8_to_fp16(hf8: torch.Tensor):
-#    global HF8_TO_FP16
-#    
-#    assert hf8.dtype == torch.uint8
-#    assert hf8.ndim == 1
-#
-#    if HF8_TO_FP16.device != hf8.device:
-#        HF8_TO_FP16 = HF8_TO_FP16.to(hf8.device)
-#    
-#    FP16 = torch.take(HF8_TO_FP16, hf8.long())
-#    
-#    return FP16.view(dtype=torch.float16)
