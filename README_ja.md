@@ -32,7 +32,7 @@ seed: 1
 
 以下のグラフは、U-netのロード時のVRAM消費量、サンプリング（生成）時のVRAM消費量、ステップあたりのサンプリング時間を測定したものです。
 
-一番左はオリジナルの U-netで、`FP16` のときの結果です。二番目はアテンション層の `Linear` のみHF形式に置き換えたものです。三番目はすべての `Linear` を HF形式で置き換えたもの、四番目はすべての `Linear` と `Conv2d` をHF形式で置き換えたものです。
+一番目は `FP16` のオリジナルモデルにおける結果です。二番目はアテンション層の `Linear` のみHF形式に置き換えたものです。三番目はすべての `Linear` を HF形式で置き換えたもの、四番目はすべての `Linear` と `Conv2d` をHF形式で置き換えたものです。
 
 ![U-netロード時VRAM消費量 (MiB)](./images/load_vram.png)
 ![サンプリング時VRAM消費量 (MiB)](./images/sampling_vram.png)
@@ -96,9 +96,9 @@ mod = nfpn.nn.to_hf12(mod)
 以下、`s` を符号ビット、`E` を指数部のビット、`f` を仮数部のビットとします。
 このとき、float16 は以下の形式となります。
 
-`fp16: s_EEEEE_ffffffffff`
+`s_EEEEE_ffffffffff`
 
-まず、Animagine XL 3.0 を float16 化したときの、全 Linear 層における浮動小数点の指数部 (`EEE`) の分布を以下に示します。
+まず、Animagine XL 3.0 を float16 化したときの、全 Linear 層における浮動小数点の指数部 (`EEEEE`) の分布を以下に示します。
 
 | EEEEE | 指数 | 個数 |
 | --- | --- | --- |
