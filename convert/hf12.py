@@ -16,11 +16,11 @@ def to_hf12(data: torch.Tensor):
     #
     # hf12 type-a: sEEE_ffff_ffff
     #                where EEE != 000
-    #       mantissa = E-12 = -5..-11
+    #       exponential = E-12 = -5..-11
     # hf12 type-b: s000_ffff_f0GG
-    #       mantissa = G-15 = -12..-15
+    #       exponential = G-15 = -12..-15
     # hf12 type-c: s000_ffff_f1HH
-    #       mantissa = H-4 = -1..-4
+    #       exponential = H-4 = -1..-4
     #
     # * significant bits
     #       0000_0000 = 1 + 0

@@ -15,7 +15,7 @@ def to_hf8x(data: torch.Tensor):
     # fp16: sEEE_EEff_ffff_ffff
     #
     # hf8x: sEEE_Efff
-    #       mantissa = E-15 = -15..0
+    #       exponential = E-15 = -15..0
     #
     # * significant bits
     #       000 = 1 + 0
