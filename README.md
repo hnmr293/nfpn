@@ -1,5 +1,7 @@
 # nfpn
 
+[→日本語はここ](./README.md)
+
 Narrowed floating point number format for Pytorch. Specifically intended for application to Stable diffusion series.
 
 ## VRAM usage and performance with FP12
