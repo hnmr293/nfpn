@@ -56,6 +56,8 @@ class Linear(torch.nn.Module):
         else:
             self.bias = None
             self.bias_shape = None
+        self.in_features = base.in_features
+        self.out_features = base.out_features
         self.to(base.weight.device)
     
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
