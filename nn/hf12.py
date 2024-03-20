@@ -1,9 +1,8 @@
-from typing import Optional
 import torch
-import torch.nn.functional as F
+from .base import to_hf, HfLinear, HfConv2d
 
-from .. import convert
 
+_FMT_NAME = 'HF12'
 
 def to_hf12(module: torch.nn.Module, convert_linear: bool = True, convert_conv2d: bool = False):
     target_modules = []
@@ -14,104 +13,14 @@ def to_hf12(module: torch.nn.Module, convert_linear: bool = True, convert_conv2d
     if convert_conv2d:
         target_modules.append((torch.nn.Conv2d, Conv2d))
     
-    for name, mod in list(module.named_modules()):
-        for orig_class, hf_class in target_modules:
-            if isinstance(mod, orig_class):
-                try:
-                    new_mod = hf_class(mod)
-                except Exception as e:
-                    print(f'[nfpn] *** WARN *** failed to convert module to HF12: {name} {str(e)}')
-                    break
-                
-                delattr(module, name)
-                del mod
-                
-                setattr(module, name, new_mod)
-                break
-    
-    return module
+    return to_hf(module, target_modules, _FMT_NAME)
 
 
-def _get_param(data: torch.Tensor):
-    if convert.HF12_MAX <= data.abs().max():
-        print('[nfpn] *** WARN *** max(abs(data)) >= HF12_MAX')
-    
-    exp, frac = convert.to_hf12(data)
-    
-    exp.requires_grad_(False)
-    frac.requires_grad_(False)
-    
-    exp = torch.nn.Parameter(exp, requires_grad=False)
-    frac = torch.nn.Parameter(frac, requires_grad=False)
-    
-    return exp, frac
-
-
-class Linear(torch.nn.Module):
+class Linear(HfLinear):
     def __init__(self, base: torch.nn.Linear) -> None:
-        super().__init__()
-        self.weight = _get_param(base.weight)
-        self.weight_shape = base.weight.shape
-        if base.bias is not None:
-            self.bias = _get_param(base.bias)
-            self.bias_shape = base.bias.shape
-        else:
-            self.bias = None
-            self.bias_shape = None
-        self.in_features = base.in_features
-        self.out_features = base.out_features
-        self.to(base.weight.device)
-    
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        weight = convert.hf12_to_fp16(*self.weight).reshape(self.weight_shape)
-        bias = convert.hf12_to_fp16(*self.bias).reshape(self.bias_shape) if self.bias else None
-        return F.linear(x, weight, bias)
-    
-    def _apply(self, fn, recurse=True):
-        super()._apply(fn, recurse)
-        self.weight = [fn(p) for p in self.weight]
-        if self.bias:
-            self.bias = [fn(p) for p in self.bias]
-        return self
+        super().__init__(_FMT_NAME, base)
 
 
-class Conv2d(torch.nn.Module):
+class Conv2d(HfConv2d):
     def __init__(self, base: torch.nn.Conv2d):
-        super().__init__()
-        self.weight = _get_param(base.weight)
-        self.weight_shape = base.weight.shape
-        if base.bias is not None:
-            self.bias = _get_param(base.bias)
-            self.bias_shape = base.bias.shape
-        else:
-            self.bias = None
-            self.bias_shape = None
-        
-        self.padding_mode = base.padding_mode
-        self._reversed_padding_repeated_twice = base._reversed_padding_repeated_twice
-        self.stride = base.stride
-        self.dilation = base.dilation
-        self.groups = base.groups
-        self.padding = base.padding
-        
-        self.to(base.weight.device)
-    
-    def _conv_forward(self, input: torch.Tensor, weight: torch.Tensor, bias: Optional[torch.Tensor]):
-        if self.padding_mode != 'zeros':
-            return F.conv2d(F.pad(input, self._reversed_padding_repeated_twice, mode=self.padding_mode),
-                            weight, bias, self.stride,
-                            (0, 0), self.dilation, self.groups)
-        return F.conv2d(input, weight, bias, self.stride,
-                        self.padding, self.dilation, self.groups)
-
-    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        weight = convert.hf12_to_fp16(*self.weight).reshape(self.weight_shape)
-        bias = convert.hf12_to_fp16(*self.bias).reshape(self.bias_shape) if self.bias else None
-        return self._conv_forward(x, weight, bias)
-    
-    def _apply(self, fn, recurse=True):
-        super()._apply(fn, recurse)
-        self.weight = [fn(p) for p in self.weight]
-        if self.bias:
-            self.bias = [fn(p) for p in self.bias]
-        return self
+        super().__init__(_FMT_NAME, base)
