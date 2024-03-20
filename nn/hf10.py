@@ -14,7 +14,7 @@ def to_hf10(module: torch.nn.Module, convert_linear: bool = True, convert_conv2d
     if convert_conv2d:
         target_modules.append((torch.nn.Conv2d, Conv2d))
     
-    for name, mod in list(module.named_children()):
+    for name, mod in list(module.named_modules()):
         for orig_class, hf_class in target_modules:
             if isinstance(mod, orig_class):
                 try:
