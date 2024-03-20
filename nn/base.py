@@ -45,14 +45,13 @@ class HfModule(torch.nn.Module):
         fn = getattr(convert, f'to_{fmt.lower()}')
         hf = fn(data)
         
-        hf.requires_grad_(False)
-        
-        hf = torch.nn.Parameter(hf, requires_grad=False)
-        
         if not isinstance(hf, tuple):
             hf = (hf,)
         
-        return hf
+        return tuple(
+            torch.nn.Parameter(x.requires_grad_(False), requires_grad=False)
+            for x in hf
+        )
     
     def _get_fp16(self, name: str):
         if not hasattr(self, name):
