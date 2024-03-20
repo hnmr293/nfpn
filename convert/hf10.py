@@ -55,7 +55,7 @@ def to_hf10(data: torch.Tensor):
     E2 = E & 0b0011
     
     E1 = E1.view((-1,4))
-    E1.bitwise_left_shift_(torch.tensor([6, 4, 2, 0]))
+    E1.bitwise_left_shift_(torch.tensor([6, 4, 2, 0], device=E1.device))
     E1 = E1.sum(dim=-1, dtype=torch.uint8)
     
     E2 <<= 6
